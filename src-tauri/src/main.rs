@@ -173,6 +173,24 @@ fn setup_event_emitter(app: &AppHandle) {
         }),
     );
 
+    // Register audio transcoding engine
+    queue.register_transcoder(
+        FileCategory::Audio,
+        Arc::new(|src, dst, fmt| {
+            let opts = shaft_audio::AudioTranscodeOptions::default();
+            shaft_audio::transcode_audio(src, dst, fmt, &opts)
+        }),
+    );
+
+    // Register video transcoding engine
+    queue.register_transcoder(
+        FileCategory::Video,
+        Arc::new(|src, dst, fmt| {
+            let opts = shaft_video::VideoTranscodeOptions::default();
+            shaft_video::transcode_video(src, dst, fmt, &opts)
+        }),
+    );
+
     let _ = QUEUE_MANAGER.set(queue);
 }
 

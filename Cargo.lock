@@ -3774,14 +3774,27 @@ dependencies = [
  "rfd",
  "serde",
  "serde_json",
+ "shaft-audio",
  "shaft-core",
  "shaft-image",
+ "shaft-video",
  "tauri",
  "tauri-build",
  "tauri-plugin-opener",
  "tokio",
  "webkit2gtk",
  "window-vibrancy 0.5.3",
+]
+
+[[package]]
+name = "shaft-audio"
+version = "0.1.0"
+dependencies = [
+ "log",
+ "serde",
+ "serde_json",
+ "shaft-core",
+ "thiserror 1.0.69",
 ]
 
 [[package]]
@@ -3809,6 +3822,17 @@ dependencies = [
  "shaft-core",
  "thiserror 1.0.69",
  "tiny-skia",
+]
+
+[[package]]
+name = "shaft-video"
+version = "0.1.0"
+dependencies = [
+ "log",
+ "serde",
+ "serde_json",
+ "shaft-core",
+ "thiserror 1.0.69",
 ]
 
 [[package]]
