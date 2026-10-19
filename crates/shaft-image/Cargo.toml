@@ -1,0 +1,16 @@
+[package]
+name = "shaft-image"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dependencies]
+shaft-core = { workspace = true }
+image = { workspace = true }
+resvg = { workspace = true }
+tiny-skia = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+log = { workspace = true }

@@ -162,7 +162,18 @@ fn setup_event_emitter(app: &AppHandle) {
     let callback = Arc::new(move |event| {
         let _ = handle.emit("shaft://task-progress", event);
     });
-    let _ = QUEUE_MANAGER.set(TaskQueueManager::with_progress_callback(callback));
+    let queue = TaskQueueManager::with_progress_callback(callback);
+
+    // Register pure safe image transcoding engine
+    queue.register_transcoder(
+        FileCategory::Image,
+        Arc::new(|src, dst, fmt| {
+            let opts = shaft_image::ImageTranscodeOptions::default();
+            shaft_image::transcode_image(src, dst, fmt, &opts)
+        }),
+    );
+
+    let _ = QUEUE_MANAGER.set(queue);
 }
 
 fn main() {

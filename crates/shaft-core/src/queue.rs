@@ -3,7 +3,7 @@ use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, RwLock};
 use std::time::Instant;
-use crate::types::{ConversionTask, TaskProgressEvent, TaskStatus};
+use crate::types::{ConversionTask, FileCategory, TaskProgressEvent, TaskStatus};
 
 #[derive(Debug, Clone)]
 pub struct CancellationToken {
@@ -33,11 +33,13 @@ impl CancellationToken {
 }
 
 pub type ProgressCallback = Arc<dyn Fn(TaskProgressEvent) + Send + Sync>;
+pub type TranscoderFn = Arc<dyn Fn(&Path, &Path, &str) -> Result<(), String> + Send + Sync>;
 
 #[derive(Clone)]
 pub struct TaskQueueManager {
     tasks: Arc<RwLock<HashMap<String, ConversionTask>>>,
     cancellations: Arc<RwLock<HashMap<String, CancellationToken>>>,
+    transcoders: Arc<RwLock<HashMap<FileCategory, TranscoderFn>>>,
     progress_callback: Option<ProgressCallback>,
 }
 
@@ -52,6 +54,7 @@ impl TaskQueueManager {
         Self {
             tasks: Arc::new(RwLock::new(HashMap::new())),
             cancellations: Arc::new(RwLock::new(HashMap::new())),
+            transcoders: Arc::new(RwLock::new(HashMap::new())),
             progress_callback: None,
         }
     }
@@ -60,8 +63,14 @@ impl TaskQueueManager {
         Self {
             tasks: Arc::new(RwLock::new(HashMap::new())),
             cancellations: Arc::new(RwLock::new(HashMap::new())),
+            transcoders: Arc::new(RwLock::new(HashMap::new())),
             progress_callback: Some(callback),
         }
+    }
+
+    pub fn register_transcoder(&self, category: FileCategory, handler: TranscoderFn) {
+        let mut trans_lock = self.transcoders.write().unwrap();
+        trans_lock.insert(category, handler);
     }
 
     pub fn submit_task(&self, task: ConversionTask) -> String {
@@ -196,10 +205,26 @@ impl TaskQueueManager {
             self.update_task_state(task.clone());
         }
 
-        // Output generation pass
-        if let Err(e) = std::fs::copy(src, &out_path) {
+        // Output generation pass via registered transcoder or fallback
+        let transcode_res = {
+            let trans_lock = self.transcoders.read().unwrap();
+            if let Some(transcoder) = trans_lock.get(&task.category) {
+                Some(transcoder(src, &out_path, &task.target_format))
+            } else {
+                None
+            }
+        };
+
+        let result = match transcode_res {
+            Some(res) => res,
+            None => std::fs::copy(src, &out_path)
+                .map(|_| ())
+                .map_err(|e| format!("Transcoding IO error: {}", e)),
+        };
+
+        if let Err(e) = result {
             task.status = TaskStatus::Failed;
-            task.error_message = Some(format!("IO error: {}", e));
+            task.error_message = Some(e);
         } else {
             task.status = TaskStatus::Completed;
             task.progress = 1.0;
