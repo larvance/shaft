@@ -17,6 +17,7 @@ shaft-core = { workspace = true }
 shaft-image = { workspace = true }
 shaft-audio = { workspace = true }
 shaft-video = { workspace = true }
+shaft-document = { workspace = true }
 log = { workspace = true }
 env_logger = { workspace = true }
 rfd = { workspace = true }

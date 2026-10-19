@@ -191,6 +191,45 @@ fn setup_event_emitter(app: &AppHandle) {
         }),
     );
 
+    // Register spreadsheet transcoding engine (XLSX, XLS, ODS, CSV, TSV)
+    queue.register_transcoder(
+        FileCategory::Spreadsheet,
+        Arc::new(|src, dst, fmt| {
+            shaft_document::transcode_spreadsheet(src, dst, fmt)
+        }),
+    );
+
+    // Register PDF extraction engine
+    queue.register_transcoder(
+        FileCategory::Pdf,
+        Arc::new(|src, dst, fmt| {
+            shaft_document::transcode_pdf(src, dst, fmt)
+        }),
+    );
+
+    // Register document compiler engine (Markdown, HTML, TXT, DOCX)
+    queue.register_transcoder(
+        FileCategory::Document,
+        Arc::new(|src, dst, fmt| {
+            shaft_document::transcode_document(src, dst, fmt)
+        }),
+    );
+
+    queue.register_transcoder(
+        FileCategory::Ebook,
+        Arc::new(|src, dst, fmt| {
+            shaft_document::transcode_document(src, dst, fmt)
+        }),
+    );
+
+    // Register subtitle conversion engine (SRT, VTT)
+    queue.register_transcoder(
+        FileCategory::Subtitle,
+        Arc::new(|src, dst, fmt| {
+            shaft_document::transcode_subtitle(src, dst, fmt)
+        }),
+    );
+
     let _ = QUEUE_MANAGER.set(queue);
 }
 
