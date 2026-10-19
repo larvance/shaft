@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { Titlebar } from "./components/layout/Titlebar";
 import { Footer } from "./components/layout/Footer";
@@ -6,6 +6,7 @@ import { DropZone } from "./components/dropzone/DropZone";
 import { FilePreviewCard } from "./components/dropzone/FilePreviewCard";
 import { RadialWheel } from "./components/wheel/RadialWheel";
 import { TaskQueue } from "./components/queue/TaskQueue";
+import { DragGesturePill } from "./components/gesture/DragGesturePill";
 import { useModifiers } from "./hooks/useModifiers";
 import { useQueueStore } from "./stores/useQueueStore";
 import { ConversionTask, FileProbeResult } from "./types";
@@ -21,6 +22,12 @@ export function App() {
   const [activeFiles, setActiveFiles] = useState<FileProbeResult[]>([]);
   const [allConversions, setAllConversions] = useState<Record<string, string[]>>({});
   const [isWheelModalOpen, setIsWheelModalOpen] = useState(false);
+
+  // Global drag gesture pill tracking
+  const [isSystemDragging, setIsSystemDragging] = useState(false);
+  const [dragCursor, setDragCursor] = useState<{ x: number; y: number } | null>(null);
+  const [dragFileCount, setDragFileCount] = useState(1);
+  const dragCounter = useRef(0);
 
   // Connect to global batch queue store
   const {
@@ -219,6 +226,64 @@ export function App() {
     }
   }, [shift, alt, ctrl, meta, activeFiles.length]);
 
+  // Global window drag event listeners for DragGesturePill
+  useEffect(() => {
+    const handleDragEnter = (e: DragEvent) => {
+      e.preventDefault();
+      dragCounter.current += 1;
+      if (e.dataTransfer && e.dataTransfer.types.includes("Files")) {
+        setIsSystemDragging(true);
+        setDragCursor({ x: e.clientX, y: e.clientY });
+        const count = e.dataTransfer.items?.length || e.dataTransfer.files?.length || 1;
+        setDragFileCount(count > 0 ? count : 1);
+      }
+    };
+
+    const handleDragOver = (e: DragEvent) => {
+      e.preventDefault();
+      setDragCursor({ x: e.clientX, y: e.clientY });
+      if (!isSystemDragging && e.dataTransfer && e.dataTransfer.types.includes("Files")) {
+        setIsSystemDragging(true);
+      }
+    };
+
+    const handleDragLeave = (e: DragEvent) => {
+      e.preventDefault();
+      dragCounter.current -= 1;
+      if (dragCounter.current <= 0) {
+        dragCounter.current = 0;
+        setIsSystemDragging(false);
+        setDragCursor(null);
+      }
+    };
+
+    const handleDrop = (e: DragEvent) => {
+      e.preventDefault();
+      dragCounter.current = 0;
+      setIsSystemDragging(false);
+      setDragCursor(null);
+
+      if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+        const paths = Array.from(e.dataTransfer.files).map(
+          (f) => (f as unknown as { path?: string }).path || f.name
+        );
+        handleFilesSelected(paths);
+      }
+    };
+
+    window.addEventListener("dragenter", handleDragEnter);
+    window.addEventListener("dragover", handleDragOver);
+    window.addEventListener("dragleave", handleDragLeave);
+    window.addEventListener("drop", handleDrop);
+
+    return () => {
+      window.removeEventListener("dragenter", handleDragEnter);
+      window.removeEventListener("dragover", handleDragOver);
+      window.removeEventListener("dragleave", handleDragLeave);
+      window.removeEventListener("drop", handleDrop);
+    };
+  }, [handleFilesSelected, isSystemDragging]);
+
   return (
     <div className="flex flex-col h-screen w-screen overflow-hidden bg-obsidian-950/80 backdrop-blur-3xl text-white">
       {/* Draggable Titlebar */}
@@ -297,6 +362,17 @@ export function App() {
             />
           </div>
         </div>
+      )}
+
+      {/* Global Drag Gesture Pill */}
+      {isSystemDragging && dragCursor && (
+        <DragGesturePill
+          x={dragCursor.x}
+          y={dragCursor.y}
+          fileCount={dragFileCount}
+          formatBadge={primaryFile?.detected_format}
+          activeModifier={activeMode || undefined}
+        />
       )}
 
       {/* Footer Status Bar */}

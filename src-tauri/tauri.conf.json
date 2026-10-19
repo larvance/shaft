@@ -33,5 +33,64 @@
         "scope": ["**"]
       }
     }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["deb", "appimage", "dmg", "msi"],
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.ico",
+      "icons/icon.png"
+    ],
+    "category": "Utility",
+    "shortDescription": "Universal zero-click drag-and-drop file converter, media tool, and action wheel",
+    "longDescription": "Universal zero-click offline file converter, contextual media processor, and quick action wheel engineered in pure safe Rust and Tauri 2.0.",
+    "copyright": "Copyright 2026 Larvance",
+    "fileAssociations": [
+      {
+        "ext": ["png", "jpg", "jpeg", "webp", "gif", "bmp", "tiff", "ico", "svg", "heic", "avif"],
+        "name": "Image Files",
+        "description": "Image formats supported by Shaft",
+        "role": "Editor"
+      },
+      {
+        "ext": ["mp4", "mov", "mkv", "webm", "avi", "wmv", "flv", "m4v"],
+        "name": "Video Files",
+        "description": "Video containers supported by Shaft",
+        "role": "Editor"
+      },
+      {
+        "ext": ["mp3", "wav", "m4a", "flac", "ogg", "opus", "aiff", "wma", "aac"],
+        "name": "Audio Files",
+        "description": "Audio formats supported by Shaft",
+        "role": "Editor"
+      },
+      {
+        "ext": ["pdf", "docx", "doc", "odt", "txt", "rtf", "md", "html"],
+        "name": "Document Files",
+        "description": "Documents supported by Shaft",
+        "role": "Editor"
+      },
+      {
+        "ext": ["xlsx", "xls", "ods", "csv", "tsv"],
+        "name": "Spreadsheet Files",
+        "description": "Spreadsheets supported by Shaft",
+        "role": "Editor"
+      },
+      {
+        "ext": ["zip", "tar", "gz", "tgz", "bz2", "xz", "7z", "rar"],
+        "name": "Archive Files",
+        "description": "Archives supported by Shaft",
+        "role": "Editor"
+      },
+      {
+        "ext": ["srt", "vtt", "sub", "ass", "ssa"],
+        "name": "Subtitle Files",
+        "description": "Subtitles supported by Shaft",
+        "role": "Editor"
+      }
+    ]
   }
 }
