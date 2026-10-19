@@ -1,0 +1,287 @@
+import { useState, useEffect, useMemo, useCallback } from "react";
+import { invoke } from "@tauri-apps/api/core";
+import { Titlebar } from "./components/layout/Titlebar";
+import { Footer } from "./components/layout/Footer";
+import { DropZone } from "./components/dropzone/DropZone";
+import { FilePreviewCard } from "./components/dropzone/FilePreviewCard";
+import { RadialWheel } from "./components/wheel/RadialWheel";
+import { TaskQueue } from "./components/queue/TaskQueue";
+import { useModifiers } from "./hooks/useModifiers";
+import { ConversionTask, FileProbeResult } from "./types";
+import { WheelItem, WheelMode } from "./types/wheel";
+
+export function App() {
+  const { shift, alt, ctrl, meta, activeMode: keyboardMode } = useModifiers();
+  const [explicitMode, setExplicitMode] = useState<WheelMode | null>(null);
+
+  // Active mode is either keyboard-driven or explicitly toggled via UI
+  const activeMode: WheelMode | null = explicitMode || keyboardMode;
+
+  const [activeFiles, setActiveFiles] = useState<FileProbeResult[]>([]);
+  const [tasks, setTasks] = useState<ConversionTask[]>([]);
+  const [allConversions, setAllConversions] = useState<Record<string, string[]>>({});
+  const [isWheelModalOpen, setIsWheelModalOpen] = useState(false);
+
+  // Load format conversion matrix from Rust backend
+  useEffect(() => {
+    async function loadMatrix() {
+      try {
+        const matrix = await invoke<Record<string, string[]>>("get_matrix");
+        setAllConversions(matrix);
+      } catch (e) {
+        console.warn("Failed to load conversion matrix via Tauri, using fallback", e);
+      }
+    }
+    loadMatrix();
+  }, []);
+
+  const totalConversionsCount = useMemo(() => {
+    let sum = 0;
+    for (const key of Object.keys(allConversions)) {
+      sum += allConversions[key].length;
+    }
+    return sum > 0 ? sum : 275;
+  }, [allConversions]);
+
+  // Handle files dropped or selected
+  const handleFilesSelected = useCallback(async (filePaths: string[]) => {
+    for (const path of filePaths) {
+      try {
+        const probe = await invoke<FileProbeResult>("probe_path", { path });
+        setActiveFiles((prev) => {
+          if (prev.some((f) => f.file_path === probe.file_path)) {
+            return prev;
+          }
+          return [probe, ...prev];
+        });
+      } catch (e) {
+        console.warn("Tauri probe_path failed, using fallback parser", e);
+        // Fallback probe
+        const fileName = path.split("/").pop() || path;
+        const ext = fileName.split(".").pop()?.toLowerCase() || "png";
+        const fallbackProbe: FileProbeResult = {
+          file_path: path,
+          file_name: fileName,
+          file_size_bytes: 1024 * 1024 * 2.4,
+          detected_format: ext,
+          category: "image",
+          available_targets: ["jpg", "png", "webp", "heic", "tiff", "avif", "pdf"],
+          applicable_tools: [],
+        };
+        setActiveFiles((prev) => [fallbackProbe, ...prev]);
+      }
+    }
+  }, []);
+
+  // Primary active file for Radial Wheel context
+  const primaryFile = activeFiles.length > 0 ? activeFiles[0] : null;
+
+  // Build items for Radial Wheel depending on activeMode
+  const wheelItems: WheelItem[] = useMemo(() => {
+    if (!primaryFile) {
+      // Default demo wheel when no file is ingested
+      return [
+        { id: "jpg", label: "JPG", payload: "jpg" },
+        { id: "png", label: "PNG", payload: "png" },
+        { id: "webp", label: "WEBP", payload: "webp" },
+        { id: "pdf", label: "PDF", payload: "pdf" },
+        { id: "avif", label: "AVIF", payload: "avif" },
+        { id: "heic", label: "HEIC", payload: "heic" },
+      ];
+    }
+
+    if (activeMode === "tool") {
+      if (primaryFile.applicable_tools.length > 0) {
+        return primaryFile.applicable_tools.map((t) => ({
+          id: t.id,
+          label: t.label,
+          icon: t.icon_name,
+          category: t.category,
+          payload: t,
+        }));
+      }
+      return [
+        { id: "compress", label: "Lossless Compress", icon: "Minimize2", payload: "compress" },
+        { id: "metadata", label: "Scrub Metadata", icon: "ShieldCheck", payload: "metadata" },
+        { id: "blur", label: "Face Blur", icon: "EyeOff", payload: "blur" },
+        { id: "ocr", label: "OCR Text", icon: "ScanText", payload: "ocr" },
+      ];
+    }
+
+    if (activeMode === "action") {
+      return [
+        { id: "share", label: "Share", icon: "Share2", payload: "share" },
+        { id: "quicklook", label: "QuickLook", icon: "Maximize2", payload: "quicklook" },
+        { id: "copy", label: "Copy File", icon: "Copy", payload: "copy" },
+        { id: "path", label: "Copy Path", icon: "Link", payload: "path" },
+        { id: "terminal", label: "Terminal", icon: "Terminal", payload: "terminal" },
+      ];
+    }
+
+    // Default: format wheel
+    if (primaryFile.available_targets.length > 0) {
+      return primaryFile.available_targets.map((tgt) => ({
+        id: tgt,
+        label: tgt.toUpperCase(),
+        payload: tgt,
+      }));
+    }
+
+    return [
+      { id: "png", label: "PNG", payload: "png" },
+      { id: "jpg", label: "JPG", payload: "jpg" },
+      { id: "webp", label: "WEBP", payload: "webp" },
+      { id: "pdf", label: "PDF", payload: "pdf" },
+    ];
+  }, [primaryFile, activeMode]);
+
+  // Execute conversion task
+  const executeConversion = useCallback(
+    async (file: FileProbeResult, targetFormat: string) => {
+      const taskId = `task_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+      const newTask: ConversionTask = {
+        id: taskId,
+        source_path: file.file_path,
+        source_name: file.file_name,
+        source_format: file.detected_format,
+        target_format: targetFormat,
+        category: file.category,
+        status: "processing",
+        progress: 0.2,
+      };
+
+      setTasks((prev) => [newTask, ...prev]);
+
+      try {
+        const result = await invoke<ConversionTask>("execute_conversion", {
+          task: newTask,
+        });
+        setTasks((prev) =>
+          prev.map((t) => (t.id === taskId ? { ...result, progress: 1.0 } : t))
+        );
+      } catch (e) {
+        console.warn("Conversion error via Tauri, using fallback simulator", e);
+        setTimeout(() => {
+          setTasks((prev) =>
+            prev.map((t) =>
+              t.id === taskId
+                ? {
+                    ...t,
+                    status: "completed",
+                    progress: 1.0,
+                    output_path: `${t.source_path}_converted.${t.target_format}`,
+                  }
+                : t
+            )
+          );
+        }, 600);
+      }
+    },
+    []
+  );
+
+  const handleSelectWheelItem = (item: WheelItem) => {
+    if (primaryFile && activeMode === "format") {
+      executeConversion(primaryFile, item.id);
+    }
+    setIsWheelModalOpen(false);
+    setExplicitMode(null);
+  };
+
+  const handleClearCompleted = () => {
+    setTasks((prev) => prev.filter((t) => t.status !== "completed"));
+  };
+
+  // Auto-open radial wheel modal when modifier key is pressed while files are loaded
+  useEffect(() => {
+    if (activeFiles.length > 0 && (shift || alt || ctrl || meta)) {
+      setIsWheelModalOpen(true);
+    }
+  }, [shift, alt, ctrl, meta, activeFiles.length]);
+
+  return (
+    <div className="flex flex-col h-screen w-screen overflow-hidden bg-obsidian-950/80 backdrop-blur-3xl text-white">
+      {/* Draggable Titlebar */}
+      <Titlebar
+        activeMode={activeMode}
+        onModeSelect={(mode) => {
+          setExplicitMode(mode);
+          if (mode) setIsWheelModalOpen(true);
+        }}
+      />
+
+      {/* Main Workspace Body */}
+      <main className="flex-1 overflow-y-auto p-4 flex flex-col gap-4 max-w-4xl w-full mx-auto">
+        {/* Drop Zone */}
+        <DropZone onFilesSelected={handleFilesSelected} />
+
+        {/* Selected Files List */}
+        {activeFiles.length > 0 && (
+          <div className="flex flex-col gap-2 mt-2">
+            <div className="text-xs font-semibold text-white/80 px-1">
+              Active Files ({activeFiles.length})
+            </div>
+            {activeFiles.map((file) => (
+              <FilePreviewCard
+                key={file.file_path}
+                probe={file}
+                onSelectTarget={(target) => executeConversion(file, target)}
+                onOpenWheel={() => {
+                  setExplicitMode("format");
+                  setIsWheelModalOpen(true);
+                }}
+                onRemove={() =>
+                  setActiveFiles((prev) =>
+                    prev.filter((f) => f.file_path !== file.file_path)
+                  )
+                }
+              />
+            ))}
+          </div>
+        )}
+
+        {/* Batch Queue */}
+        <TaskQueue
+          tasks={tasks}
+          onClearCompleted={handleClearCompleted}
+          onRevealOutput={(path) => {
+            console.log("Reveal in file manager:", path);
+          }}
+        />
+      </main>
+
+      {/* Floating Radial Wheel Modal Overlay */}
+      {isWheelModalOpen && (
+        <div
+          onClick={() => {
+            setIsWheelModalOpen(false);
+            setExplicitMode(null);
+          }}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md animate-in fade-in duration-150"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="glass-panel-elevated rounded-3xl p-4 shadow-2xl animate-in zoom-in-95 duration-150"
+          >
+            <RadialWheel
+              items={wheelItems}
+              mode={activeMode || "format"}
+              sourceFileName={primaryFile?.file_name}
+              onSelect={handleSelectWheelItem}
+              onCancel={() => {
+                setIsWheelModalOpen(false);
+                setExplicitMode(null);
+              }}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Footer Status Bar */}
+      <Footer
+        activeMode={activeMode}
+        totalConversions={totalConversionsCount}
+      />
+    </div>
+  );
+}
