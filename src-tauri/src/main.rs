@@ -28,6 +28,11 @@ fn probe_path(path: String) -> Result<FileProbeResult, String> {
 }
 
 #[tauri::command]
+fn inspect_archive_entries(path: String) -> Result<shaft_archive::ArchiveMetadata, String> {
+    shaft_archive::inspect_archive(path)
+}
+
+#[tauri::command]
 fn get_matrix() -> HashMap<String, Vec<String>> {
     get_all_conversions()
 }
@@ -230,6 +235,14 @@ fn setup_event_emitter(app: &AppHandle) {
         }),
     );
 
+    // Register archive engine (ZIP, TAR, GZ, TGZ)
+    queue.register_transcoder(
+        FileCategory::Archive,
+        Arc::new(|src, dst, fmt| {
+            shaft_archive::transcode_archive(src, dst, fmt)
+        }),
+    );
+
     let _ = QUEUE_MANAGER.set(queue);
 }
 
@@ -245,6 +258,7 @@ fn main() {
         })
         .invoke_handler(tauri::generate_handler![
             probe_path,
+            inspect_archive_entries,
             get_matrix,
             get_route,
             get_tools_for_category,
