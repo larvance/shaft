@@ -33,6 +33,21 @@ fn inspect_archive_entries(path: String) -> Result<shaft_archive::ArchiveMetadat
 }
 
 #[tauri::command]
+fn execute_media_tool(
+    path: String,
+    tool_id: String,
+    options: Option<serde_json::Value>,
+) -> Result<String, String> {
+    let opts = options.unwrap_or(serde_json::json!({}));
+    shaft_tools::execute_tool(&path, &tool_id, &opts)
+}
+
+#[tauri::command]
+fn execute_file_action(path: String, action_id: String) -> Result<String, String> {
+    shaft_tools::execute_action(&path, &action_id)
+}
+
+#[tauri::command]
 fn get_matrix() -> HashMap<String, Vec<String>> {
     get_all_conversions()
 }
@@ -259,6 +274,8 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             probe_path,
             inspect_archive_entries,
+            execute_media_tool,
+            execute_file_action,
             get_matrix,
             get_route,
             get_tools_for_category,

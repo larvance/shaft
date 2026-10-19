@@ -178,10 +178,36 @@ export function App() {
     [submitTask]
   );
 
-  const handleSelectWheelItem = (item: WheelItem) => {
-    if (primaryFile && activeMode === "format") {
+  const handleSelectWheelItem = async (item: WheelItem) => {
+    if (!primaryFile) return;
+
+    if (activeMode === "format") {
       executeConversion(primaryFile, item.id);
+    } else if (activeMode === "tool") {
+      try {
+        await invoke("execute_media_tool", {
+          path: primaryFile.file_path,
+          toolId: item.id,
+          options: {},
+        });
+      } catch (e) {
+        console.error("Tool execution failed:", e);
+      }
+    } else if (activeMode === "action") {
+      try {
+        if (item.id === "path") {
+          await navigator.clipboard.writeText(primaryFile.file_path);
+        } else {
+          await invoke("execute_file_action", {
+            path: primaryFile.file_path,
+            actionId: item.id,
+          });
+        }
+      } catch (e) {
+        console.error("Action execution failed:", e);
+      }
     }
+
     setIsWheelModalOpen(false);
     setExplicitMode(null);
   };

@@ -6,6 +6,7 @@ members = [
     "crates/shaft-video",
     "crates/shaft-document",
     "crates/shaft-archive",
+    "crates/shaft-tools",
     "src-tauri",
 ]
 resolver = "2"
@@ -24,6 +25,7 @@ shaft-audio = { path = "crates/shaft-audio" }
 shaft-video = { path = "crates/shaft-video" }
 shaft-document = { path = "crates/shaft-document" }
 shaft-archive = { path = "crates/shaft-archive" }
+shaft-tools = { path = "crates/shaft-tools" }
 
 calamine = "0.37"
 rust_xlsxwriter = "0.100"

@@ -19,6 +19,7 @@ shaft-audio = { workspace = true }
 shaft-video = { workspace = true }
 shaft-document = { workspace = true }
 shaft-archive = { workspace = true }
+shaft-tools = { workspace = true }
 log = { workspace = true }
 env_logger = { workspace = true }
 rfd = { workspace = true }

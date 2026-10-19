@@ -3998,6 +3998,7 @@ dependencies = [
  "shaft-core",
  "shaft-document",
  "shaft-image",
+ "shaft-tools",
  "shaft-video",
  "tauri",
  "tauri-build",
@@ -4074,6 +4075,24 @@ dependencies = [
  "shaft-core",
  "thiserror 1.0.69",
  "tiny-skia",
+]
+
+[[package]]
+name = "shaft-tools"
+version = "0.1.0"
+dependencies = [
+ "image",
+ "log",
+ "lopdf",
+ "serde",
+ "serde_json",
+ "shaft-archive",
+ "shaft-audio",
+ "shaft-core",
+ "shaft-document",
+ "shaft-image",
+ "shaft-video",
+ "thiserror 1.0.69",
 ]
 
 [[package]]
