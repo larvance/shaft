@@ -38,6 +38,36 @@ export const FilePreviewCard: FC<FilePreviewCardProps> = ({
     }
   };
 
+  const renderMetadataSummary = () => {
+    const meta = probe.metadata;
+    const details: string[] = [];
+
+    if (meta.width && meta.height) {
+      details.push(`${meta.width} × ${meta.height} px`);
+    }
+
+    if (meta.sample_rate) {
+      const khz = (meta.sample_rate / 1000).toFixed(1);
+      details.push(`${khz} kHz`);
+    }
+
+    if (meta.channels) {
+      details.push(meta.channels === 2 ? "Stereo" : meta.channels === 1 ? "Mono" : `${meta.channels} ch`);
+    }
+
+    if (meta.page_count && meta.page_count > 1) {
+      details.push(`${meta.page_count} pages`);
+    }
+
+    if (details.length === 0) return null;
+
+    return (
+      <span className="text-white/60 font-mono text-[10px]">
+        ({details.join(" • ")})
+      </span>
+    );
+  };
+
   return (
     <div className="glass-panel rounded-xl p-4 flex flex-col gap-3 transition-all hover:border-white/15">
       {/* File Info Header */}
@@ -50,7 +80,7 @@ export const FilePreviewCard: FC<FilePreviewCardProps> = ({
             <div className="text-xs font-semibold text-white/90 truncate max-w-sm">
               {probe.file_name}
             </div>
-            <div className="flex items-center gap-2 mt-0.5 text-[11px] font-mono text-white/40">
+            <div className="flex items-center gap-2 mt-0.5 text-[11px] font-mono text-white/40 flex-wrap">
               <span className="uppercase text-brand-light font-bold">
                 .{probe.detected_format}
               </span>
@@ -58,6 +88,7 @@ export const FilePreviewCard: FC<FilePreviewCardProps> = ({
               <span>{formatBytes(probe.file_size_bytes)}</span>
               <span>•</span>
               <span className="capitalize">{probe.category}</span>
+              {renderMetadataSummary()}
             </div>
           </div>
         </div>

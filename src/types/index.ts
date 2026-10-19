@@ -26,6 +26,16 @@ export interface ActionInfo {
   icon_name: string;
 }
 
+export interface ExtendedMetadata {
+  width?: number;
+  height?: number;
+  duration_seconds?: number;
+  sample_rate?: number;
+  channels?: number;
+  page_count?: number;
+  mime_type?: string;
+}
+
 export interface FileProbeResult {
   file_path: string;
   file_name: string;
@@ -34,9 +44,10 @@ export interface FileProbeResult {
   category: FileCategory;
   available_targets: string[];
   applicable_tools: ToolInfo[];
+  metadata: ExtendedMetadata;
 }
 
-export type TaskStatus = "queued" | "processing" | "completed" | "failed";
+export type TaskStatus = "queued" | "processing" | "completed" | "failed" | "cancelled";
 
 export interface ConversionTask {
   id: string;
@@ -47,6 +58,20 @@ export interface ConversionTask {
   category: FileCategory;
   status: TaskStatus;
   progress: number;
+  speed_bytes_per_sec?: number;
+  eta_seconds?: number;
+  error_message?: string;
+  output_path?: string;
+}
+
+export interface TaskProgressEvent {
+  task_id: string;
+  status: TaskStatus;
+  progress: number;
+  bytes_processed: number;
+  total_bytes: number;
+  speed_bytes_per_sec?: number;
+  eta_seconds?: number;
   error_message?: string;
   output_path?: string;
 }

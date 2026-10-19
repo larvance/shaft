@@ -93,6 +93,17 @@ pub struct ActionInfo {
     pub icon_name: String,
 }
 
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct ExtendedMetadata {
+    pub width: Option<u32>,
+    pub height: Option<u32>,
+    pub duration_seconds: Option<f32>,
+    pub sample_rate: Option<u32>,
+    pub channels: Option<u16>,
+    pub page_count: Option<u32>,
+    pub mime_type: Option<String>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FileProbeResult {
     pub file_path: String,
@@ -102,6 +113,7 @@ pub struct FileProbeResult {
     pub category: FileCategory,
     pub available_targets: Vec<String>,
     pub applicable_tools: Vec<ToolInfo>,
+    pub metadata: ExtendedMetadata,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -111,6 +123,7 @@ pub enum TaskStatus {
     Processing,
     Completed,
     Failed,
+    Cancelled,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -123,6 +136,19 @@ pub struct ConversionTask {
     pub category: FileCategory,
     pub status: TaskStatus,
     pub progress: f32,
+    pub error_message: Option<String>,
+    pub output_path: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TaskProgressEvent {
+    pub task_id: String,
+    pub status: TaskStatus,
+    pub progress: f32,
+    pub bytes_processed: u64,
+    pub total_bytes: u64,
+    pub speed_bytes_per_sec: Option<u64>,
+    pub eta_seconds: Option<f32>,
     pub error_message: Option<String>,
     pub output_path: Option<String>,
 }

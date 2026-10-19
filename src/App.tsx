@@ -7,6 +7,7 @@ import { FilePreviewCard } from "./components/dropzone/FilePreviewCard";
 import { RadialWheel } from "./components/wheel/RadialWheel";
 import { TaskQueue } from "./components/queue/TaskQueue";
 import { useModifiers } from "./hooks/useModifiers";
+import { useQueueStore } from "./stores/useQueueStore";
 import { ConversionTask, FileProbeResult } from "./types";
 import { WheelItem, WheelMode } from "./types/wheel";
 
@@ -18,9 +19,30 @@ export function App() {
   const activeMode: WheelMode | null = explicitMode || keyboardMode;
 
   const [activeFiles, setActiveFiles] = useState<FileProbeResult[]>([]);
-  const [tasks, setTasks] = useState<ConversionTask[]>([]);
   const [allConversions, setAllConversions] = useState<Record<string, string[]>>({});
   const [isWheelModalOpen, setIsWheelModalOpen] = useState(false);
+
+  // Connect to global batch queue store
+  const {
+    tasks,
+    initEventListener,
+    submitTask,
+    cancelTask,
+    cancelAll,
+    clearCompleted,
+  } = useQueueStore();
+
+  // Initialize Tauri event listener on mount
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+    initEventListener().then((fn) => {
+      unlisten = fn;
+    });
+
+    return () => {
+      unlisten?.();
+    };
+  }, [initEventListener]);
 
   // Load format conversion matrix from Rust backend
   useEffect(() => {
@@ -67,6 +89,7 @@ export function App() {
           category: "image",
           available_targets: ["jpg", "png", "webp", "heic", "tiff", "avif", "pdf"],
           applicable_tools: [],
+          metadata: { width: 1920, height: 1080 },
         };
         setActiveFiles((prev) => [fallbackProbe, ...prev]);
       }
@@ -135,7 +158,7 @@ export function App() {
     ];
   }, [primaryFile, activeMode]);
 
-  // Execute conversion task
+  // Execute conversion task via queue store
   const executeConversion = useCallback(
     async (file: FileProbeResult, targetFormat: string) => {
       const taskId = `task_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
@@ -146,38 +169,13 @@ export function App() {
         source_format: file.detected_format,
         target_format: targetFormat,
         category: file.category,
-        status: "processing",
-        progress: 0.2,
+        status: "queued",
+        progress: 0.0,
       };
 
-      setTasks((prev) => [newTask, ...prev]);
-
-      try {
-        const result = await invoke<ConversionTask>("execute_conversion", {
-          task: newTask,
-        });
-        setTasks((prev) =>
-          prev.map((t) => (t.id === taskId ? { ...result, progress: 1.0 } : t))
-        );
-      } catch (e) {
-        console.warn("Conversion error via Tauri, using fallback simulator", e);
-        setTimeout(() => {
-          setTasks((prev) =>
-            prev.map((t) =>
-              t.id === taskId
-                ? {
-                    ...t,
-                    status: "completed",
-                    progress: 1.0,
-                    output_path: `${t.source_path}_converted.${t.target_format}`,
-                  }
-                : t
-            )
-          );
-        }, 600);
-      }
+      await submitTask(newTask);
     },
-    []
+    [submitTask]
   );
 
   const handleSelectWheelItem = (item: WheelItem) => {
@@ -186,10 +184,6 @@ export function App() {
     }
     setIsWheelModalOpen(false);
     setExplicitMode(null);
-  };
-
-  const handleClearCompleted = () => {
-    setTasks((prev) => prev.filter((t) => t.status !== "completed"));
   };
 
   // Auto-open radial wheel modal when modifier key is pressed while files are loaded
@@ -243,7 +237,9 @@ export function App() {
         {/* Batch Queue */}
         <TaskQueue
           tasks={tasks}
-          onClearCompleted={handleClearCompleted}
+          onCancelTask={cancelTask}
+          onCancelAll={cancelAll}
+          onClearCompleted={clearCompleted}
           onRevealOutput={(path) => {
             console.log("Reveal in file manager:", path);
           }}
