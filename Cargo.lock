@@ -4004,7 +4004,6 @@ dependencies = [
  "tauri-build",
  "tauri-plugin-opener",
  "tokio",
- "webkit2gtk",
  "window-vibrancy 0.5.3",
 ]
 

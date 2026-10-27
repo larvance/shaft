@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=Shaft
+GenericName=File Converter & Action Wheel
+Comment=Universal zero-click drag-and-drop file converter, media tool, and action wheel
+Exec=shaft %U
+Icon=shaft
+Terminal=false
+Categories=Utility;FileTools;Graphics;AudioVideo;
+MimeType=image/png;image/jpeg;image/webp;image/svg+xml;image/gif;image/bmp;image/tiff;video/mp4;video/quicktime;video/x-matroska;video/webm;video/x-msvideo;audio/mpeg;audio/x-wav;audio/flac;audio/ogg;audio/opus;audio/x-m4a;application/pdf;application/vnd.openxmlformats-officedocument.wordprocessingml.document;application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;application/zip;application/x-tar;application/gzip;text/plain;text/markdown;text/vtt;application/x-subrip;
+StartupNotify=true
+X-GNOME-UsesNotifications=true

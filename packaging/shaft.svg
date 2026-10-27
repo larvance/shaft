@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#15171a"/>
+      <stop offset="50%" stop-color="#0f1012"/>
+      <stop offset="100%" stop-color="#08090a"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8"/>
+      <stop offset="100%" stop-color="#0284c7"/>
+    </linearGradient>
+    <linearGradient id="glow" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#60a5fa" stop-opacity="0.8"/>
+      <stop offset="100%" stop-color="#3b82f6" stop-opacity="0.2"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="8" stdDeviation="16" flood-color="#000000" flood-opacity="0.6"/>
+    </filter>
+  </defs>
+
+  <!-- Base Rounded Container -->
+  <rect x="32" y="32" width="448" height="448" rx="112" fill="url(#bg)" stroke="rgba(255, 255, 255, 0.08)" stroke-width="4" filter="url(#shadow)"/>
+
+  <!-- Outer Concentric Ring -->
+  <circle cx="256" cy="256" r="160" fill="none" stroke="rgba(255, 255, 255, 0.05)" stroke-width="2"/>
+
+  <!-- Radial Segment Arcs -->
+  <g stroke="url(#accent)" stroke-width="6" fill="none" stroke-linecap="round">
+    <!-- Top Arc -->
+    <path d="M 220 126 A 132 132 0 0 1 292 126"/>
+    <!-- Right Arc -->
+    <path d="M 386 220 A 132 132 0 0 1 386 292"/>
+    <!-- Bottom Arc -->
+    <path d="M 292 386 A 132 132 0 0 1 220 386"/>
+    <!-- Left Arc -->
+    <path d="M 126 292 A 132 132 0 0 1 126 220"/>
+  </g>
+
+  <!-- Central Dynamic Rotor Hub -->
+  <circle cx="256" cy="256" r="88" fill="#121417" stroke="rgba(255, 255, 255, 0.12)" stroke-width="3"/>
+  <circle cx="256" cy="256" r="64" fill="none" stroke="url(#glow)" stroke-width="2" stroke-dasharray="6 6"/>
+
+  <!-- Central Conversion Rotor Arrows -->
+  <g fill="none" stroke="#f1f5f9" stroke-width="7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 216 236 L 256 196 L 296 236"/>
+    <path d="M 256 196 L 256 316"/>
+    <path d="M 296 276 L 256 316 L 216 276"/>
+  </g>
+
+  <!-- Core Pivot -->
+  <circle cx="256" cy="256" r="14" fill="#38bdf8"/>
+  <circle cx="256" cy="256" r="6" fill="#08090a"/>
+</svg>

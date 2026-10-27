@@ -1,0 +1,130 @@
+name: Release Shaft
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Release version tag (e.g. 0.1.0)"
+        required: true
+        default: "0.1.0"
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-shaft-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build-and-release:
+    name: Build & Package Shaft Linux Release Assets
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Determine Packaging Version
+        id: ver
+        shell: bash
+        run: |
+          if [ -n "${{ inputs.version }}" ]; then
+            V="${{ inputs.version }}"
+          elif [[ "${GITHUB_REF_NAME}" =~ ^v[0-9] ]]; then
+            V="${GITHUB_REF_NAME#v}"
+          elif [[ "${GITHUB_REF_NAME}" =~ ^[0-9] ]]; then
+            V="${GITHUB_REF_NAME}"
+          else
+            V="0.1.0"
+          fi
+          echo "version=${V}" >> $GITHUB_OUTPUT
+          echo "VERSION=${V}" >> $GITHUB_ENV
+
+      - name: Install Linux Build Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            pkg-config \
+            libwebkit2gtk-4.1-dev \
+            libgtk-3-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            libsoup-3.0-dev \
+            libjavascriptcoregtk-4.1-dev \
+            libfuse2t64 \
+            file
+
+      - name: Install Rust Stable Toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-unknown-linux-gnu
+
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v2
+
+      - name: Compile Shaft Release Binary
+        run: |
+          npm ci || npm install
+          npm run build
+          cargo build --release -p shaft-app
+          cp target/release/shaft-app target/release/shaft
+          strip target/release/shaft target/release/shaft-app || true
+
+      - name: Assemble Debian Package and Portable Tarball
+        run: |
+          mkdir -p dist-release
+
+          # Build Debian package
+          bash packaging/deb/build_deb.sh "${VERSION}"
+          cp "target/debian/shaft_${VERSION}_amd64.deb" dist-release/
+
+          # Standalone binary
+          cp target/release/shaft dist-release/shaft
+          chmod +x dist-release/shaft
+
+          # Portable Tarball
+          TARBALL="shaft-${VERSION}-linux-x86_64.tar.gz"
+          TAR_DIR="target/tarball_staging"
+          rm -rf "${TAR_DIR}"
+          mkdir -p "${TAR_DIR}/icons"
+
+          cp target/release/shaft "${TAR_DIR}/shaft"
+          chmod +x "${TAR_DIR}/shaft"
+          cp install.sh "${TAR_DIR}/install.sh"
+          chmod +x "${TAR_DIR}/install.sh"
+          cp packaging/shaft.desktop "${TAR_DIR}/shaft.desktop"
+          cp README.md LICENSE "${TAR_DIR}/" 2>/dev/null || true
+          if [ -f src-tauri/icons/128x128.png ]; then
+            cp src-tauri/icons/128x128.png "${TAR_DIR}/icons/"
+          fi
+          if [ -f src-tauri/icons/32x32.png ]; then
+            cp src-tauri/icons/32x32.png "${TAR_DIR}/icons/"
+          fi
+          if [ -f packaging/shaft.svg ]; then
+            cp packaging/shaft.svg "${TAR_DIR}/icons/"
+          fi
+
+          tar -czf "dist-release/${TARBALL}" -C "${TAR_DIR}" .
+
+          # Compute SHA256 Checksums
+          cd dist-release
+          sha256sum * > SHA256SUMS
+          cat SHA256SUMS
+          cd ..
+
+      - name: Publish Official Tagged Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: "shaft ${{ env.VERSION }}: Universal Zero-Click Drag-and-Drop File Converter & Action Wheel"
+          draft: false
+          prerelease: false
+          make_latest: true
+          generate_release_notes: false
+          files: |
+            dist-release/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

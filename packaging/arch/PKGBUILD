@@ -1,0 +1,23 @@
+# Maintainer: Larvance <https://github.com/larvance>
+pkgname=shaft-bin
+pkgver=0.1.0
+pkgrel=1
+pkgdesc="Universal zero-click drag-and-drop file converter, media tool, and action wheel"
+arch=('x86_64')
+url="https://github.com/larvance/shaft"
+license=('MIT')
+depends=('webkit2gtk-4.1' 'gtk3')
+optdepends=('ffmpeg: hardware-accelerated video/audio encoding')
+provides=('shaft')
+conflicts=('shaft')
+source_x86_64=("https://github.com/larvance/shaft/releases/download/v${pkgver}/shaft-${pkgver}-linux-x86_64.tar.gz")
+sha256sums_x86_64=('SKIP')
+
+package() {
+    cd "${srcdir}"
+    install -Dm755 shaft "${pkgdir}/usr/bin/shaft"
+    install -Dm644 packaging/shaft.desktop "${pkgdir}/usr/share/applications/shaft.desktop"
+    if [ -f "packaging/shaft.svg" ]; then
+        install -Dm644 packaging/shaft.svg "${pkgdir}/usr/share/icons/hicolor/scalable/apps/shaft.svg"
+    fi
+}
